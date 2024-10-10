@@ -93,6 +93,19 @@ def split_odd_even_pages(pdf_file, output_file=None,start=0,end=None):
         print(f"Error processing PDF file: {e}")
     return(return_files)
 ########################################################################
+def open_pdf_and_wait(file_path):
+    try:
+        if platform.system() == 'Windows':
+            # On Windows, 'start' opens files with the default application
+            subprocess.run(['start', file_path], check=True, shell=True)
+        elif platform.system() == 'Darwin':  # macOS
+            # On macOS, 'open' opens files with the default application
+            subprocess.run(['open', file_path], check=True)
+        else:  # Linux and other Unix-like systems
+            # On Linux, 'xdg-open' opens files with the default application
+            subprocess.run(['xdg-open', file_path], check=True)
+    except Exception as e:
+        print(f"Failed to open the file: {e}")
 ########################################################################
 if __name__ == "__main__":
     # Parse the command-line argument
@@ -112,3 +125,18 @@ if __name__ == "__main__":
         print(f"Processing Batch No. : {i} {entry}")
         ListOfFiles.append(split_odd_even_pages(args.file,output_file=Target_folder+"/ALL.pdf",start=entry["start"],end=entry["end"]))
     print(ListOfFiles)
+    if(args.print):
+        print(f'Print job starting')
+            for i,e in enumerate(ListOfFiles):
+                print(f"Processing Batch No. : {i} {e}")
+                print("Print Even pages first")
+                open_pdf_and_wait(e["even"])
+                response = input("Re-insert printed pages and press 'y' to continue?: ").strip().lower()
+                if response != 'y':
+                    break
+                else:
+                    print("Print ODD pages")
+                    open_pdf_and_wait(e["odd"])
+                response = input("Press 'y' to continue with next batch?: ").strip().lower()
+                if response != 'y':
+                    break
