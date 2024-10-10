@@ -1,7 +1,19 @@
+### e.g. python3 PrintPDFFilePrep.py -f Input/abc.pdf -b 500
+
 import os
 import argparse
 import sys
 from PyPDF2 import PdfReader, PdfWriter
+########################################################################
+def split_into_batches(N,batch_size):
+    if(batch_size==None):
+        return([{'start': 0, 'end': N}])
+    batchRange=[]
+    for i in range(0, N, batch_size):
+        start = i
+        end = min(i + batch_size - 1, N)
+        batchRange.append({'start': start, 'end': end})
+    return(batchRange)
 ########################################################################
 def modify_filename(full_path, prefix="", suffix=""):
     # Extract directory, filename without extension, and the extension
@@ -34,9 +46,9 @@ def create_folder_for_pdf(pdf_path):
         print(f"Folder '{folder_name}' already exists.")
     return(folder_path)
 ########################################################################
-def split_odd_even_pages(pdf_file, output_file="output.pdf",start=0,end=None):
-    return_files=[]
-    path,op_filename=extract_path_and_filename(output_file)
+def split_odd_even_pages(pdf_file, output_file=None,start=0,end=None):
+    #print(f"Debug args: {pdf_file} , {output_file}, {start},{end}")
+    return_files={}
     try:
         # Open the PDF file
         reader = PdfReader(pdf_file)
@@ -46,9 +58,10 @@ def split_odd_even_pages(pdf_file, output_file="output.pdf",start=0,end=None):
         num_pages = len(reader.pages)
         if(output_file==None):
             return(num_pages)
-        end=num_pages if(end==None) else None
+        # Extraction Range processing
+        end = num_pages if end is None else end
 
-
+        path,op_filename=extract_path_and_filename(output_file)
         # Odd Page processing
         odd_pages= [page for page in range(start,end) if (page) % 2 != 0]
         odd_output_file=modify_filename(output_file,"Odd_","_%d-%d"%(start,end))
@@ -59,7 +72,7 @@ def split_odd_even_pages(pdf_file, output_file="output.pdf",start=0,end=None):
         with open(odd_output_file, "wb") as output_pdf:
             writer.write(output_pdf)
         #print(f"Odd pages are saved to '{odd_output_file}'")
-        return_files.append(odd_output_file)
+        return_files["odd"]=odd_output_file
 
         # Even page Processing
         reader = PdfReader(pdf_file)
@@ -74,7 +87,7 @@ def split_odd_even_pages(pdf_file, output_file="output.pdf",start=0,end=None):
         with open(even_output_file, "wb") as output_pdf:
             writer.write(output_pdf)
         #print(f"Even pages in reverse order are saved to '{even_output_file}'")
-        return_files.append(even_output_file)
+        return_files["even"]=even_output_file
 
     except Exception as e:
         print(f"Error processing PDF file: {e}")
@@ -90,7 +103,12 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
     #args.file="Input/Wrox.Professional.Linux.Kernel.Architecture.Oct.2008.pdf"
-
+    TotalPages=split_odd_even_pages(args.file)
+    print(f"Total pages: {TotalPages}")
     Target_folder=create_folder_for_pdf(args.file)
-    ListOfFiles=split_odd_even_pages(args.file,Target_folder+"/ALL.pdf")
+    batchRange=split_into_batches(TotalPages,args.batch)
+    ListOfFiles=[]
+    for i,entry in enumerate(batchRange):
+        print(f"Processing Batch No. : {i} {entry}")
+        ListOfFiles.append(split_odd_even_pages(args.file,output_file=Target_folder+"/ALL.pdf",start=entry["start"],end=entry["end"]))
     print(ListOfFiles)
