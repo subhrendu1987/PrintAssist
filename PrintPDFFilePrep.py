@@ -4,15 +4,18 @@ import os
 import argparse
 import sys
 from PyPDF2 import PdfReader, PdfWriter
+import platform
+import subprocess
+import shutil
 ########################################################################
-def split_into_batches(N,batch_size):
+def split_into_batches(start,N,batch_size):
     if(batch_size==None):
-        return([{'start': 0, 'end': N}])
+        return([{'start': start, 'end': N}])
     batchRange=[]
-    for i in range(0, N, batch_size):
-        start = i
+    for i in range(start, N, batch_size):
+        st = i
         end = min(i + batch_size - 1, N)
-        batchRange.append({'start': start, 'end': end})
+        batchRange.append({'start': st, 'end': end})
     return(batchRange)
 ########################################################################
 def modify_filename(full_path, prefix="", suffix=""):
@@ -112,14 +115,18 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Prepare Large PDF file for both side printing in a single function printer.")
     parser.add_argument("-f", "--file", help="Path to the PDF file")
     parser.add_argument("-b", "--batch", type=int, default=None, help="Print page size for each batch")
+    parser.add_argument("-s", "--start", type=int, default=1, help="Start from page")
+    parser.add_argument("-e", "--end", type=int, default=100000, help="End at page")
     parser.add_argument("-p", "--print", action="store_true", help="Print the files one after another and wait till it completes")
+    parser.add_argument("-c", "--clean", action="store_true", help="Cleanup after printing")
 
     args = parser.parse_args()
     #args.file="Input/Wrox.Professional.Linux.Kernel.Architecture.Oct.2008.pdf"
-    TotalPages=split_odd_even_pages(args.file)
+    TotalPages=min(split_odd_even_pages(args.file),(args.end-1))
+    start=max((args.start-1),0)
     print(f"Total pages: {TotalPages}")
     Target_folder=create_folder_for_pdf(args.file)
-    batchRange=split_into_batches(TotalPages,args.batch)
+    batchRange=split_into_batches(start,TotalPages,args.batch)
     ListOfFiles=[]
     for i,entry in enumerate(batchRange):
         print(f"Processing Batch No. : {i} {entry}")
@@ -127,16 +134,22 @@ if __name__ == "__main__":
     print(ListOfFiles)
     if(args.print):
         print(f'Print job starting')
-            for i,e in enumerate(ListOfFiles):
-                print(f"Processing Batch No. : {i} {e}")
-                print("Print Even pages first")
-                open_pdf_and_wait(e["even"])
-                response = input("Re-insert printed pages and press 'y' to continue?: ").strip().lower()
-                if response != 'y':
-                    break
-                else:
-                    print("Print ODD pages")
-                    open_pdf_and_wait(e["odd"])
-                response = input("Press 'y' to continue with next batch?: ").strip().lower()
-                if response != 'y':
-                    break
+        for i,e in enumerate(ListOfFiles):
+            print(f"Processing Batch No. : {i} {e}")
+            print("Print Even pages first")
+            open_pdf_and_wait(e["even"])
+            response = input("Re-insert printed pages and press 'y' to continue?: ").strip().lower()
+            if response != 'y':
+                break
+            else:
+                print("Print ODD pages")
+                open_pdf_and_wait(e["odd"])
+            response = input("Press 'y' to continue with next batch?: ").strip().lower()
+            if response != 'y':
+                break
+    if(args.clean):
+        try:
+            shutil.rmtree(Target_folder)
+            print(f"Folder '{Target_folder}' and all its contents have been deleted.")
+        except Exception as e:
+            print(f"Error deleting folder: {e}")
