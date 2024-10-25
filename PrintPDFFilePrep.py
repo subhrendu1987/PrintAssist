@@ -60,14 +60,16 @@ def split_odd_even_pages(pdf_file, output_file=None,start=0,end=None):
         # Get the total number of pages in the PDF
         num_pages = len(reader.pages)
         if(output_file==None):
+            print("Page count: %d"%(num_pages))
             return(num_pages)
         # Extraction Range processing
         end = num_pages if end is None else end
-
         path,op_filename=extract_path_and_filename(output_file)
-        # Odd Page processing
+
+        # Even Pages (Since the page sequence numbering starts from 0)
         odd_pages= [page for page in range(start,end) if (page) % 2 != 0]
-        odd_output_file=modify_filename(output_file,"Odd_","_%d-%d"%(start,end))
+        #print(odd_pages)
+        odd_output_file=modify_filename(output_file,"2.Odd_","_%d-%d"%(start,end))
         # Add the reversed even pages to the writer
         for page_num in odd_pages:
             writer.add_page(reader.pages[page_num])
@@ -77,16 +79,17 @@ def split_odd_even_pages(pdf_file, output_file=None,start=0,end=None):
         #print(f"Odd pages are saved to '{odd_output_file}'")
         return_files["odd"]=odd_output_file
 
-        # Even page Processing
+        # Odd pages (Since the page sequence numbering starts from 0)
         reader = PdfReader(pdf_file)
         writer = PdfWriter()
 
-        even_pages = [page for page in range(end-1,start,-1) if (page) % 2 == 0]
+        even_pages = [page for page in range(end-1,start-1,-1) if (page) % 2 == 0]
+        #print(even_pages)
         # Add the reversed even pages to the writer
         for page_num in even_pages:
             writer.add_page(reader.pages[page_num])
         # Write the even pages to the output PDF file
-        even_output_file=modify_filename(output_file,"Even_","_%d-%d_rev"%(start,end))
+        even_output_file=modify_filename(output_file,"1.Even_","_%d-%d_rev"%(start,end))
         with open(even_output_file, "wb") as output_pdf:
             writer.write(output_pdf)
         #print(f"Even pages in reverse order are saved to '{even_output_file}'")
@@ -124,7 +127,6 @@ if __name__ == "__main__":
     #args.file="Input/Wrox.Professional.Linux.Kernel.Architecture.Oct.2008.pdf"
     TotalPages=min(split_odd_even_pages(args.file),(args.end-1))
     start=max((args.start-1),0)
-    print(f"Total pages: {TotalPages}")
     Target_folder=create_folder_for_pdf(args.file)
     batchRange=split_into_batches(start,TotalPages,args.batch)
     ListOfFiles=[]
